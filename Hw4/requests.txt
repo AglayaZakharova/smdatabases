@@ -1,0 +1,144 @@
+/// 1. ///
+
+1) JOIN method:
+
+SELECT SUM(sales_items.Quantity * sales_items.UnitPrice) AS total_sales
+FROM sales 
+JOIN sales_items ON sales_items.SalesId = sales.SalesId
+JOIN customers ON sales.CustomerId = customers.CustomerId
+WHERE customers.Country = 'USA' 
+AND sales.SalesDate BETWEEN '2012-01-01' AND '2012-03-31';
+
+2) Subquery method
+
+SELECT SUM(sales_items.Quantity * sales_items.UnitPrice) AS total_sales
+FROM sales_items
+WHERE SalesId IN (
+	SELECT SalesId
+	FROM sales
+	WHERE SalesDate 
+	BETWEEN '2012-01-01' AND '2012-03-31'
+	AND CustomerId IN (
+		SELECT CustomerId 
+		FROM customers 
+		WHERE Country = 'USA'
+	)
+);
+
+---
+
+/// 2. ///
+
+1) JOIN method
+
+SELECT customers.FirstName 
+FROM customers 
+LEFT JOIN employees 
+ON customers.FirstName = employees.FirstName
+WHERE employees.FirstName IS NULL;
+
+2) Subquery method
+
+SELECT FirstName 
+FROM customers 
+WHERE customers.FirstName
+NOT IN (SELECT FirstName FROM employees);
+
+3) logical substraction method
+
+SELECT FirstName 
+FROM customers 
+EXCEPT 
+SELECT FirstName 
+FROM employees;
+
+---
+
+/// 3. ///
+
+Нет.
+Первый запрос сначала выполняет "LEFT JOIN" между `t1` и `t2` на основе `t1.column1 = t2.column1`. А потом уже он фильтрует результаты, используя `WHERE`, сохраняя только строки, в которых `t1.column1 = 0`. Это означает, что он вернет только строки из `t1`, где `t1.column1` равно 0, и соответствующие строки из `t2`.
+Второй запрос включает условие `t1.column1 = 0` непосредственно в предложение `ON` в `LEFT JOIN`. Это означает, что соединение выполняется только между строками, где t1.column1 = 0. Если в строке `t1` значение `t1.column1` не равно 0, оно не будет учитываться при объединении, в результате чего в результирующем наборе появится только эта строка из `t1`, а значения `NULL` для всех столбцов из `t2`.
+
+Получается, первый запрос вернет больше строк: он будет включать все строки из `t1`, где `t1.column1` равно 0, независимо от того, есть ли совпадение в `t2`. Затем он выполнит объединение. А запрос 2 объединит только строки из `t1`, где `t1.column1` равно 0.
+
+/// 4. ///
+
+1) JOIN method
+
+SELECT
+  a.Title,
+  COUNT(t.TrackId) AS TrackCount
+FROM albums AS a
+JOIN tracks AS t
+  ON a.AlbumId = t.AlbumId
+GROUP BY
+  a.Title;
+
+2) Subquery method
+
+SELECT
+  Title,
+  (
+    SELECT
+      COUNT(*)
+    FROM tracks
+    WHERE
+      AlbumId = a.AlbumId
+  ) AS TrackCount
+FROM albums AS a;
+
+---
+
+/// 5. ///
+
+SELECT
+  c.LastName,
+  c.FirstName
+FROM customers AS c
+JOIN sales AS s
+  ON c.CustomerId = s.CustomerId
+WHERE
+  c.Country = 'Germany'
+  AND strftime('%Y', s.SalesDate) = '2009'
+  AND s.ShipCity = 'Berlin';
+
+---
+
+/// 6. ///
+
+1) JOIN method
+
+SELECT c.LastName
+FROM customers c
+LEFT JOIN sales s ON c.CustomerId = s.CustomerId
+LEFT JOIN sales_items si ON s.SalesId = si.SalesId
+GROUP BY c.CustomerId
+HAVING COUNT(si.TrackId) > 30
+
+2) Subquery method
+
+SELECT LastName
+FROM customers c
+WHERE (SELECT COUNT(*) FROM sales_items si JOIN sales s ON si.SalesId = s.SalesId WHERE s.CustomerId = c.CustomerId) > 30
+
+---
+
+/// 7. ///
+
+SELECT g.Name AS Genre, AVG(t.UnitPrice) AS AverageTrackCost
+FROM tracks t
+JOIN genres g ON t.GenreId = g.GenreId
+GROUP BY g.GenreId, g.Name;
+
+---
+
+/// 8. ///
+
+SELECT genres.Name AS GenreName
+FROM tracks
+JOIN genres ON tracks.GenreId = genres.GenreId
+GROUP BY genres.Name
+HAVING AVG(tracks.UnitPrice) > 1;
+
+---
