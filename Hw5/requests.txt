@@ -1,0 +1,94 @@
+a) Average number of visits before the first bet
+
+SELECT AVG(visits)
+FROM (
+    SELECT COUNT(*) AS visits
+    FROM LOG l
+    JOIN (SELECT user_id, MIN(time) AS first_bet_time FROM LOG WHERE bet > 0 GROUP BY user_id) fb ON l.user_id = fb.user_id AND l.time < fb.first_bet_time
+    GROUP BY l.user_id
+) AS visit_counts;
+
+Answer: 4.66666666666667
+
+---
+
+b) Average win percentage
+
+SELECT AVG(win * 100.0 / bet) AS Average_win_percent
+FROM LOG
+WHERE bet > 0; --added to avoid division by zero
+
+Answer: 1389.47260688076
+
+---
+
+c) User balances
+
+SELECT user_id, COALESCE(SUM(win), 0) - COALESCE(SUM(bet), 0) AS balance FROM LOG GROUP BY user_id;
+
+Answer:
+user_id:    balance:
+user_1000	3101.0
+user_900	20697.0
+user_901	-600.0
+user_902	2321.0
+user_903	-6828.0
+user_904	-600.0
+user_905	-20940.0
+user_906	3515.0
+user_907	23910.0
+user_908	-13232.0
+user_909	16934.0
+user_910	-232121.0
+user_911	-6370.0
+user_912	24302.0
+etc.
+
+---
+
+d) Top 5 geos by average win/bet ratio
+
+SELECT geo, AVG(win / bet) AS multiplying_bets
+FROM USERS
+JOIN LOG ON USERS.user_id = LOG.user_id
+WHERE bet > 0 -- added to avoid division by zero
+GROUP BY geo
+ORDER BY multiplying_bets DESC
+LIMIT 5;
+
+Answer: 
+geo             multiplying_bets
+Ставрополь	    18.025731485129
+Краснодар	    16.8999254574786
+Екатеринбург	16.6525102040816
+Хабаровск	    16.1873757405882
+Ижевск	        15.7561339536382
+
+---
+
+e) Geo with the highest bet
+
+SELECT geo, MAX(bet) AS max_bet
+FROM USERS
+JOIN LOG ON USERS.user_id = LOG.user_id
+GROUP BY geo
+ORDER BY max_bet DESC
+LIMIT 1;
+
+Answer: Москва 1678321.0
+
+---
+
+f) Average time until first bet after first visit
+
+SELECT AVG(JULIANDAY(first_bet) - JULIANDAY(first_visit)) AS avg_time_to_bet
+FROM (
+    SELECT 
+        MIN(CASE WHEN bet > 0 THEN time ELSE NULL END) AS first_bet, 
+        MIN(time) AS first_visit
+    FROM LOG
+    GROUP BY user_id
+) AS first_events
+WHERE first_bet IS NOT NULL; -- added to only consider users who placed a bet.
+
+Answer: 48.2708593044634
